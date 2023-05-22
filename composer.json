@@ -1,0 +1,43 @@
+{
+    "name": "lee-to/moonshine-kanban-board-resource",
+    "description": "Kanban board resource for moonshine",
+    "keywords": ["moonshine"],
+    "type": "library",
+    "homepage": "https://moonshine.cutcode.dev",
+    "license": "MIT",
+    "support": {
+        "issues": "https://github.com/lee-to/moonshine-kanban-board-resource/issues",
+        "source": "https://github.com/lee-to/moonshine-kanban-board-resource"
+    },
+    "authors": [
+        {
+            "name": "Danil Shutsky",
+            "email": "thecutcode@gmail.com",
+            "homepage": "https://cutcode.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.0|^8.1|^8.2",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Leeto\\MoonShineKanBan\\": "src/"
+        }
+    },
+    "conflict": {
+        "moonshine/moonshine": "<1.57"
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "format": "vendor/bin/php-cs-fixer fix --allow-risky=yes"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Leeto\\MoonShineKanBan\\Providers\\MoonShineKanBanServiceProvider"
+            ]
+        }
+    }
+}
