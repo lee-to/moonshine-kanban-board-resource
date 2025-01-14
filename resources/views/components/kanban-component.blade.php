@@ -1,21 +1,25 @@
-<x-moonshine::grid>
-    @foreach($statuses as $status)
-        <x-moonshine::column colSpan="4">
-            <x-moonshine::box :title="$status->{$resource->statusTitleField()}">
-                <ul x-data="sortable" data-parent_key="{{ $status->getKey() }}">
-                    @if(isset($data[$status->getKey()]))
-                        @foreach($data[$status->getKey()] as $item)
-                            <li data-id="{{ $item->getItem()->getKey() }}">
+@props([
+    'buttons',
+    'column' => 'id',
+    'sortRoute' => '',
+    'statuses' => [],
+    'data' => [],
+])
+<x-moonshine::layout.grid>
+    @foreach($statuses as $key => $title)
+        <x-moonshine::layout.column colSpan="4">
+            <x-moonshine::layout.box :title="$title">
+                <ul x-data="kbSortable" data-parent_key="{{ $key }}">
+                    @if(isset($data[$key]))
+                        @foreach($data[$key] as $item)
+                            <li data-id="{{ $item->getKey() }}">
                                 <x-moonshine::card
                                     class="handle"
-                                    :title="$item->getItem()->{$resource->titleField()}"
+                                    :title="$item->{$column}"
                                 >
                                     <x-slot:actions>
                                         <div class="flex items-center justify-end gap-2">
-                                            @include('moonshine::crud.shared.item-actions', [
-                                                'resource' => $item,
-                                                'except' => ['show']
-                                            ])
+                                            {!! $buttons($item) !!}
                                         </div>
                                     </x-slot:actions>
                                 </x-moonshine::card>
@@ -24,13 +28,13 @@
                         @endforeach
                     @endif
                 </ul>
-            </x-moonshine::box>
-        </x-moonshine::column>
+            </x-moonshine::layout.box>
+        </x-moonshine::layout.column>
     @endforeach
-</x-moonshine::grid>
+</x-moonshine::layout.grid>
 
 <script>
-    function sortable() {
+    function kbSortable() {
         return {
             init() {
                 Sortable.create(this.$el, {
@@ -51,7 +55,7 @@
                         formData.append('index', evt.newIndex);
                         formData.append('data', this.toArray());
 
-                        await fetch('{{ $resource->route('kanban') }}', {
+                        await fetch('{{ $sortRoute }}', {
                             body: formData,
                             method: "post",
                         })

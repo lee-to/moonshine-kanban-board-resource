@@ -2,20 +2,24 @@
 
 namespace Leeto\MoonShineKanBan\Resources;
 
+use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
-use MoonShine\Http\Requests\Resources\ViewAnyFormRequest;
-use MoonShine\Resources\Resource;
+use Leeto\MoonShineKanBan\View\Components\KanBanComponent;
+use MoonShine\AssetManager\Js;
+use MoonShine\Contracts\UI\ComponentContract;
+use MoonShine\Laravel\MoonShineRequest;
+use MoonShine\Laravel\Resources\ModelResource;
+use MoonShine\Support\AlpineJs;
+use MoonShine\Support\Enums\JsEvent;
+use MoonShine\Support\Enums\SortDirection;
 
-abstract class KanBanResource extends Resource
+abstract class KanBanResource extends ModelResource
 {
     protected bool $usePagination = false;
-    protected string $itemsView = 'moonshine-kanban::items';
 
-    public string $titleField = 'id';
-
-    public static string $orderType = 'ASC';
+    protected SortDirection $sortDirection = SortDirection::ASC;
 
     protected bool $createInModal = true;
 
@@ -23,81 +27,61 @@ abstract class KanBanResource extends Resource
 
     abstract public function statuses(): Collection;
 
-    abstract public function statusTitleField(): string;
+    abstract public function foreignKey(): string;
 
-    abstract public function statusKey(): string;
-
-    abstract public function statusSortKey(): string;
-
-    abstract public function sortKey(): string;
-
-    public function search(): array
+    protected function onLoad(): void
     {
-        return [];
+        parent::onLoad();
+
+        $this->getAssetManager()->add(
+            Js::make('https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js')
+        );
     }
 
-    public function filters(): array
+    public function modifyListComponent(ComponentContract $component): ComponentContract
     {
-        return [];
+        return KanBanComponent::make($this, $this->getItems());
     }
 
-    public function actions(): array
+    public function getListEventName(?string $name = null, array $params = []): string
     {
-        return [];
+        return AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'crud-list');
     }
 
-
-    public function perform(Collection $resources): array
+    public function sort(MoonShineRequest $request): Response
     {
-        $performed = [];
+        $keyName = $request->getResource()?->getModel()?->getKeyName();
+        $model = $request->getResource()?->getModel();
 
-        foreach ($resources as $resource) {
-            $item = $resource->getItem();
-            $performed[$item->{$this->statusKey()}][] = $resource;
-        }
-
-        foreach ($performed as $statusId => $items) {
-            $performed[$statusId] = collect($items)->sortBy(function (Resource $item) {
-                return $item->getItem()->{$this->statusSortKey()};
-            })->toArray();
-        }
+        $model->newModelQuery()
+            ->firstWhere($keyName, $request->input('id'))
+            ?->update([
+                $this->getSortColumn() => $request->integer('index'),
+                $this->foreignKey() => $request->input('parent')
+            ]);
 
 
-        return $performed;
-    }
+        if ($request->str('data')->isNotEmpty()) {
+            $caseStatement = $request->str('data')
+                ->explode(',')
+                ->implode(fn($id, $index) => "WHEN $id THEN $index ");
 
-    public function resolveRoutes(): void
-    {
-        parent::resolveRoutes();
-
-        Route::prefix('resource')->group(function () {
-            Route::post("{$this->uriKey()}/kanban", function (ViewAnyFormRequest $request) {
-                $keyName = $request->getResource()->getModel()->getKeyName();
-                $model = $request->getResource()->getModel();
-
-                $model->newQuery()
-                    ->where($keyName, $request->get('id'))
-                    ->update([
-                        $this->sortKey() => $request->integer('index'),
-                        $this->statusKey() => $request->get('parent')
+            $model->newModelQuery()
+                ->when(
+                    $request->input('parent'),
+                    fn(Builder $q) => $q->where($this->foreignKey(), $request->input('parent'))
+                )
+                ->get()
+                ->each(function ($row) use($keyName, $caseStatement) {
+                    $row->update([
+                        $this->getSortColumn() => DB::raw(
+                            "CASE $keyName $caseStatement ELSE {$this->getSortColumn()} END"
+                        )
                     ]);
+                });
 
+        }
 
-                $caseStatement = $request->str('data')
-                    ->explode(',')
-                    ->filter()
-                    ->implode(fn($id, $index) => "WHEN {$id} THEN {$index} ");
-
-                if ($caseStatement) {
-                    $model->newQuery()
-                        ->update([
-                            $this->statusKey() => $request->get('parent'),
-                            $this->sortKey() => DB::raw("CASE $keyName $caseStatement END")
-                        ]);
-                }
-
-                return response()->noContent();
-            })->name($this->routeNameAlias().'.kanban');
-        });
+        return response()->noContent();
     }
 }
