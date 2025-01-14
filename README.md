@@ -2,7 +2,7 @@
 
 <p align="center">
 <a href="https://moonshine.cutcode.dev" target="_blank">
-<img src="https://github.com/lee-to/moonshine-kanban-board-resource/blob/master/art/screenshot.png">
+<img src="https://github.com/lee-to/moonshine-kanban-board-resource/blob/1.x/art/screenshot.png">
 </a>
 </p>
 
