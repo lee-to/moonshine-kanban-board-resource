@@ -31,7 +31,7 @@ class TaskResource extends KanBanResource
 
     // ... fields, model, etc ...
 
-    public function statuses(): Collection
+    public function statuses(): \Illuminate\Support\Collection
     {
         return Status::query()
             ->orderBy('sorting')
