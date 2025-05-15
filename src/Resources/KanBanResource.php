@@ -60,26 +60,23 @@ abstract class KanBanResource extends ModelResource
                 $this->foreignKey() => $request->input('parent')
             ]);
 
-
-        if ($request->str('data')->isNotEmpty()) {
-            $caseStatement = $request->str('data')
+        
+        if ($request->filled('data')) {
+            $ids = $request->str('data')
                 ->explode(',')
-                ->implode(fn($id, $index) => "WHEN $id THEN $index ");
+                ->values();
 
-            $model->newModelQuery()
-                ->when(
-                    $request->input('parent'),
-                    fn(Builder $q) => $q->where($this->foreignKey(), $request->input('parent'))
-                )
-                ->get()
-                ->each(function ($row) use($keyName, $caseStatement) {
-                    $row->update([
-                        $this->getSortColumn() => DB::raw(
-                            "CASE $keyName $caseStatement ELSE {$this->getSortColumn()} END"
-                        )
-                    ]);
-                });
+            foreach ($ids as $index => $id) {
+                $query = $model->newModelQuery()->where($keyName, $id);
 
+                if ($request->has('parent')) {
+                    $query->where($this->foreignKey(), $request->input('parent'));
+                }
+
+                $query->update([
+                    $resource->getSortColumn() => (int) $index,
+                ]);
+            }
         }
 
         return response()->noContent();
