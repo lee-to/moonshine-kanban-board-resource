@@ -1,64 +1,92 @@
-@props([
-    'buttons',
-    'column' => 'id',
-    'sortRoute' => '',
-    'statuses' => [],
-    'data' => [],
-])
-<x-moonshine::layout.grid>
-    @foreach($statuses as $key => $title)
-        <x-moonshine::layout.column colSpan="4">
-            <x-moonshine::layout.box :title="$title">
-                <ul x-data="kbSortable" data-parent_key="{{ $key }}">
-                    @if(isset($data[$key]))
-                        @foreach($data[$key] as $item)
-                            <li data-id="{{ $item->getKey() }}">
-                                <x-moonshine::card
-                                    class="handle"
-                                    :title="$item->{$column}"
-                                >
-                                    <x-slot:actions>
-                                        <div class="flex items-center justify-end gap-2">
-                                            {!! $buttons($item) !!}
-                                        </div>
-                                    </x-slot:actions>
-                                </x-moonshine::card>
-                                <hr class="divider" />
-                            </li>
-                        @endforeach
-                    @endif
-                </ul>
-            </x-moonshine::layout.box>
-        </x-moonshine::layout.column>
-    @endforeach
-</x-moonshine::layout.grid>
+<div class="w-full overflow-hidden">
+    <div
+        class="w-full overflow-x-auto"
+        style="scrollbar-width: thin; -webkit-overflow-scrolling: touch;     overflow-x: scroll;"
+        x-data="kanbanBoardScroll"
+    >
+        <div class="flex gap-4 pb-4 px-4 select-none items-start min-w-max">
+            @foreach ($statuses as $key => $title)
+                <x-moonshine-kanban::column
+                    :title="$title"
+                    :key="$key"
+                    :items="$data[$key] ?? []"
+                    :buttons="$buttons"
+                    :sortRoute="$sortRoute"
+                />
+            @endforeach
+        </div>
+    </div>
+</div>
 
 <script>
-    function kbSortable() {
+    // Auto-scroll horizontally when dragging card near board edges
+    function kanbanBoardScroll() {
         return {
             init() {
-                Sortable.create(this.$el, {
-                    group: {
-                        name: 'nested'
-                    },
-                    handle: '.handle',
+                const container = this.$el;
+                const edge = 120;   // sensitive edge area in pixels
+                const speed = 20;   // scroll speed in pixels
+
+                document.addEventListener('dragover', (e) => {
+                    const rect = container.getBoundingClientRect();
+                    const x = e.clientX;
+
+                    if (x < rect.left + edge) {
+                        container.scrollLeft -= speed;
+                    } else if (x > rect.right - edge) {
+                        container.scrollLeft += speed;
+                    }
+                });
+            }
+        }
+    }
+
+    // Vertical auto-scroll inside column
+    function kbSortable(sortRoute) {
+        return {
+            init() {
+                const scrollSpeed = 15;
+                const edgeSize = 80;
+                const container = this.$el;
+
+                Sortable.create(container, {
+                    group: {name: 'kanban-group'},
                     animation: 150,
+                    handle: '.handle',
                     fallbackOnBody: true,
                     swapThreshold: 0.65,
                     dataIdAttr: 'data-id',
 
-                    onSort: async function (evt) {
+                    onStart(evt) {
+                        evt.item.classList.add('kanban-lift');
+                    },
+                    onEnd(evt) {
+                        evt.item.classList.remove('kanban-lift');
+                    },
+
+                    onMove(evt) {
+                        const rect = container.getBoundingClientRect();
+                        const y = evt.originalEvent.clientY;
+
+                        if (y < rect.top + edgeSize) {
+                            container.scrollTop -= scrollSpeed;
+                        } else if (y > rect.bottom - edgeSize) {
+                            container.scrollTop += scrollSpeed;
+                        }
+                    },
+
+                    async onSort(evt) {
                         let formData = new FormData();
                         formData.append('_token', '{{ csrf_token() }}');
                         formData.append('id', evt.item.dataset.id);
                         formData.append('parent', evt.to.dataset.parent_key);
                         formData.append('index', evt.newIndex);
-                        formData.append('data', this.toArray());
 
-                        await fetch('{{ $sortRoute }}', {
+
+                        await fetch(sortRoute, {
+                            method: 'POST',
                             body: formData,
-                            method: "post",
-                        })
+                        });
                     }
                 });
             }
