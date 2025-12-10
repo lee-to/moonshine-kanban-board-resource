@@ -2,10 +2,8 @@
 
 namespace Leeto\MoonShineKanBan\Resources;
 
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Leeto\MoonShineKanBan\View\Components\KanBanComponent;
 use MoonShine\AssetManager\Js;
 use MoonShine\Contracts\UI\ComponentContract;
@@ -20,6 +18,8 @@ abstract class KanBanResource extends ModelResource
     protected bool $usePagination = false;
 
     protected SortDirection $sortDirection = SortDirection::ASC;
+
+    protected ?string $description = null;
 
     protected bool $createInModal = true;
 
@@ -60,7 +60,6 @@ abstract class KanBanResource extends ModelResource
                 $this->foreignKey() => $request->input('parent')
             ]);
 
-        
         if ($request->filled('data')) {
             $ids = $request->str('data')
                 ->explode(',')
@@ -74,11 +73,18 @@ abstract class KanBanResource extends ModelResource
                 }
 
                 $query->update([
-                    $resource->getSortColumn() => (int) $index,
+                    $this->getSortColumn() => (int)$index,
                 ]);
             }
         }
 
         return response()->noContent();
     }
+
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
 }

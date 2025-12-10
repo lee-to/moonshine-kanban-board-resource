@@ -16,7 +16,9 @@
 composer require lee-to/moonshine-kanban-board-resource
 ```
 
-### Get started
+## Usage
+
+### Basic Usage
 
 Example usage
 
@@ -28,6 +30,8 @@ class TaskResource extends KanBanResource
     protected string $title = 'title';
 
     protected string $sortColumn = 'sorting';
+
+    protected ?string $description = 'description'; // Card description field (optional)
 
     // ... fields, model, etc ...
 
@@ -46,3 +50,126 @@ class TaskResource extends KanBanResource
     // ...
 }
 ```
+
+### Advanced Usage with DTO
+
+You can use the DTO approach for more flexible customization:
+
+```php
+use Leeto\MoonShineKanBan\DTOs\KanbanItem;
+
+public function getItems(): iterable|Collection|LazyCollection|CursorPaginator|Paginator
+{
+    $items = collect();
+    foreach (Article::query()->get() as $article) {
+        $item = KanbanItem::make(
+            id: $article->id,
+            title: $article->title,
+            status: (string)$article->rating,
+        )
+            ->setModel($article)
+            ->setSubtitle(str($article->description)->limit(50))
+            ->setThumbnail($article->thumbnail ? Storage::disk('public')->url($article->thumbnail) : asset('images/template.jpg'))
+            ->addLabel(fake()->word(), 'red')
+            ->addLabel('G', 'green')
+            ->setUser(avatar: "http://moonshine.local/images/template.jpg")
+            ->addMeta('chat-bubble-left', rand(0, 100))
+            ->addMeta('users', rand(0, 50))
+            ->setButtons([
+                ActionButton::make(
+                    'View',
+                    $this->getPageUrl($this->getDetailPage(), params: ['resourceItem' => $article->getKey()])
+                )->icon('eye')->showInDropdown(),
+
+                ActionButton::make(
+                    'Edit',
+                    $this->getPageUrl($this->getFormPage(), params: ['resourceItem' => $article->getKey()])
+                )->icon('pencil')->showInDropdown(),
+            ]);
+
+        $items->push($item);
+    }
+
+    return $items;
+}
+```
+
+## Features
+
+### KanbanItem DTO Properties
+
+The `KanbanItem` DTO provides extensive customization options:
+
+#### Basic Properties
+- `id`: Item identifier (required)
+- `title`: Card title (required)
+- `status`: Status key (required)
+- `subtitle`: Optional subtitle text (1-2 lines)
+- `thumbnail`: Preview image URL
+- `model`: Associated Eloquent model
+
+#### Visual Elements
+- `labels`: Array of colored labels (Trello-style)
+- `user`: User information with avatar, name and URL
+- `meta`: Array of metadata with icons and labels
+- `buttons`: Custom action buttons
+
+#### Methods
+- `setSubtitle(?string $subtitle)`: Set subtitle text
+- `setThumbnail(?string $thumbnail)`: Set thumbnail image
+- `addLabel(string $label, string $color)`: Add a colored label
+- `setUser(string $avatar, ?string $name = null, ?string $url = null)`: Set user info
+- `addMeta(string $icon, string $label)`: Add metadata with icon
+- `setButtons(array $buttons)`: Set custom buttons
+- `setModel(Model $model)`: Associate with Eloquent model
+
+### Custom Buttons
+
+You can define custom buttons using the `getIndexButtons()` method:
+
+```php
+/**
+ * Action buttons for cards in kanban
+ */
+public function getIndexButtons(): array
+{
+    return [
+        ActionButton::make(
+            'View',
+            fn( $item) => $this->getPageUrl(KanbanDetailPage::class, params: ['resourceItem' => $item->id])
+        )->icon('eye'),
+
+        ActionButton::make(
+            'Edit',
+            fn( $item) => $this->getPageUrl(KanbanDetailPage::class, params: ['resourceItem' => $item->id])
+        )->icon('pencil'),
+
+        DeleteButton::for(
+            $this,
+            componentName: $this->getListComponentName(),
+            redirectAfterDelete: $this->getIndexPageUrl(),
+            modalName: "has-one-{$this->getUriKey()}",
+        ),
+    ];
+}
+```
+
+### Horizontal Scrolling
+
+The kanban board features horizontal scrolling with auto-scroll functionality:
+
+- **Manual Scrolling**: Users can scroll horizontally through columns
+- **Auto-scroll on Drag**: When dragging a card near the left or right edge, the board automatically scrolls
+- **Smooth Animation**: Scrolling is animated for better user experience
+- **Touch Support**: Works on touch devices with swipe gestures
+
+### Component Structure
+
+The view is split into three main components for customization:
+
+1. **Kanban Component**: Main container with scroll functionality
+2. **Column Component**: Individual column with header and card list
+3. **Item Component**: Individual card with all visual elements
+
+Each component can be customized independently by extending the base components.
+
