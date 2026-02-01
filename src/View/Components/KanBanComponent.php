@@ -41,7 +41,7 @@ class KanBanComponent extends MoonShineComponent
 
     public function transformData(Collection $items): Collection
     {
-        return $items->mapToGroups(fn(KanbanItem $item) => [$item->status => $item]);
+        return $items->mapToGroups(fn(KanbanItem $item) => [$item->model->{$item->status} => $item]);
     }
 
     protected function viewData(): array
@@ -49,7 +49,7 @@ class KanBanComponent extends MoonShineComponent
         $buttons = fn(Model|KanbanItem $item) => $item instanceof Model
             // reversed compatibility, if an Eloquent Model is passed instead of KanbanItem
             ? ActionGroup::make(
-                ActionButtons::make($this->resource->setItem($item)->getIndexButtons())
+                ActionButtons::make($this->resource->setItem($item)->getIndexPage()?->getButtons())
                     ->fill($this->resource->setItem($item)->getCastedData())
                     ->onlyVisible()
                     ->withoutBulk())

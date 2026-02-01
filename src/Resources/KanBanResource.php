@@ -6,10 +6,12 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Leeto\MoonShineKanBan\View\Components\KanBanComponent;
 use MoonShine\AssetManager\Js;
+use MoonShine\Contracts\Core\DependencyInjection\CrudRequestContract;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Laravel\MoonShineRequest;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\Support\AlpineJs;
+use MoonShine\Support\Attributes\AsyncMethod;
 use MoonShine\Support\Enums\JsEvent;
 use MoonShine\Support\Enums\SortDirection;
 
@@ -38,9 +40,9 @@ abstract class KanBanResource extends ModelResource
         );
     }
 
-    public function modifyListComponent(ComponentContract $component): ComponentContract
+    public function getDescription(): ?string
     {
-        return KanBanComponent::make($this, $this->getItems());
+        return $this->description;
     }
 
     public function getListEventName(?string $name = null, array $params = []): string
@@ -48,7 +50,8 @@ abstract class KanBanResource extends ModelResource
         return AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'crud-list');
     }
 
-    public function sort(MoonShineRequest $request): Response
+    #[AsyncMethod]
+    public function sort(CrudRequestContract $request): Response
     {
         $keyName = $request->getResource()?->getModel()?->getKeyName();
         $model = $request->getResource()?->getModel();
@@ -80,11 +83,4 @@ abstract class KanBanResource extends ModelResource
 
         return response()->noContent();
     }
-
-
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
-
 }

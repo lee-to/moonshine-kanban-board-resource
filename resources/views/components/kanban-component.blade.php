@@ -4,7 +4,7 @@
         style="scrollbar-width: thin; -webkit-overflow-scrolling: touch;     overflow-x: scroll;"
         x-data="kanbanBoardScroll"
     >
-        <div class="flex gap-4 pb-4 px-4 select-none items-start min-w-max">
+        <div class="flex gap-4 pb-4 select-none items-start min-w-max">
             @foreach ($statuses as $key => $title)
                 <x-moonshine-kanban::column
                     :title="$title"
@@ -81,7 +81,7 @@
                         formData.append('id', evt.item.dataset.id);
                         formData.append('parent', evt.to.dataset.parent_key);
                         formData.append('index', evt.newIndex);
-
+                        formData.append('data', this.toArray())
 
                         await fetch(sortRoute, {
                             method: 'POST',

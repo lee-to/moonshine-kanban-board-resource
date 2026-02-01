@@ -3,6 +3,7 @@
 namespace Leeto\MoonShineKanBan\DTOs;
 
 use Illuminate\Database\Eloquent\Model;
+use MoonShine\Support\Enums\Color;
 use MoonShine\Support\Traits\Makeable;
 
 
@@ -55,59 +56,64 @@ class KanbanItem
         $this->status = $status;
     }
 
-    public function setSubtitle(?string $subtitle): KanbanItem
+    public function setSubtitle(?string $subtitle): static
     {
         $this->subtitle = $subtitle;
         return $this;
     }
 
-    public function setThumbnail(?string $thumbnail): KanbanItem
+    public function setThumbnail(?string $thumbnail): static
     {
         $this->thumbnail = $thumbnail;
+
         return $this;
     }
 
-    public function setLabels(array $labels): KanbanItem
+    public function setLabels(array $labels): static
     {
         $this->labels = $labels;
+
         return $this;
     }
 
-    public function addLabel(string $label, string $color): KanbanItem
+    public function addLabel(string $label, string|Color $color): static
     {
         $this->labels[] = [
             'label' => $label,
-            'color' => $color,
+            'color' => $color instanceof Color ? $color->value : $color,
         ];
+
         return $this;
     }
 
-    public function setUser(string $avatar, ?string $name = null, ?string $url = null): KanbanItem
+    public function setUser(string $avatar, ?string $name = null, ?string $url = null): static
     {
         $this->user = [
             'name' => $name,
             'avatar' => $avatar,
             'url' => $url,
         ];
+
         return $this;
     }
 
-    public function setMeta(array $meta): KanbanItem
+    public function setMeta(array $meta): static
     {
         $this->meta = $meta;
         return $this;
     }
 
-    public function addMeta(string $icon, string $label): KanbanItem
+    public function addMeta(string $icon, string $label): static
     {
         $this->meta[] = [
             'icon' => $icon,
             'label' => $label,
         ];
+
         return $this;
     }
 
-    public function setButtons(array $buttons): KanbanItem
+    public function setButtons(array $buttons): static
     {
         $this->buttons = $buttons;
         return $this;

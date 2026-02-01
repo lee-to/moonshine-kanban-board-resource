@@ -8,7 +8,8 @@
 
 ### Requirements
 
-- MoonShine v3.0+
+- v0 - 2.1 - MoonShine v3.0
+- v2.2+ - MoonShine v4.0
 
 ### Installation
 
@@ -35,6 +36,14 @@ class TaskResource extends KanBanResource
 
     // ... fields, model, etc ...
 
+    protected function pages(): array
+    {
+        return [
+            TaskIndexPage::class,
+            FormPageContract::class,
+        ];
+    }
+
     public function statuses(): \Illuminate\Support\Collection
     {
         return Status::query()
@@ -51,6 +60,18 @@ class TaskResource extends KanBanResource
 }
 ```
 
+IndexPage
+
+```php
+final class TaskIndexPage extends IndexPage
+{
+    protected function modifyListComponent(ComponentContract $component): ComponentContract
+    {
+        return KanBanComponent::make($this->getResource(), $this->getResource()->getItems());
+    }
+}
+```
+
 ### Advanced Usage with DTO
 
 You can use the DTO approach for more flexible customization:
@@ -58,34 +79,30 @@ You can use the DTO approach for more flexible customization:
 ```php
 use Leeto\MoonShineKanBan\DTOs\KanbanItem;
 
-public function getItems(): iterable|Collection|LazyCollection|CursorPaginator|Paginator
+public function getItems(): iterable
 {
-    $items = collect();
-    foreach (Article::query()->get() as $article) {
-        $item = KanbanItem::make(
-            id: $article->id,
-            title: $article->title,
-            status: (string)$article->rating,
-        )
-            ->setModel($article)
-            ->setSubtitle(str($article->description)->limit(50))
-            ->setThumbnail($article->thumbnail ? Storage::disk('public')->url($article->thumbnail) : asset('images/template.jpg'))
-            ->addLabel(fake()->word(), 'red')
-            ->addLabel('G', 'green')
-            ->setUser(avatar: "http://moonshine.local/images/template.jpg")
-            ->addMeta('chat-bubble-left', rand(0, 100))
-            ->addMeta('users', rand(0, 50))
-            ->setButtons([
-                ActionButton::make(
-                    'View',
-                    $this->getPageUrl($this->getDetailPage(), params: ['resourceItem' => $article->getKey()])
-                )->icon('eye')->showInDropdown(),
+    $items = new Collection;
 
-                ActionButton::make(
-                    'Edit',
-                    $this->getPageUrl($this->getFormPage(), params: ['resourceItem' => $article->getKey()])
-                )->icon('pencil')->showInDropdown(),
-            ]);
+    foreach (parent::getItems() as $task) {
+        $item = KanbanItem::make(
+            id: $task->id,
+            title: $task->title,
+            status: $this->foreignKey(),
+        )
+            ->setModel($task)
+            ->setSubtitle(str($task->description)->limit(50)->value())
+            //->setThumbnail(asset('images/template.jpg'))
+            ->addLabel(fake()->word(), 'red')
+            ->addLabel(fake()->word(), 'green')
+            ->setUser(
+                avatar: asset('images/template.jpg'),
+                name: $task->user->name,
+            )
+            ->addMeta('user', $task->user->name)
+            ->addMeta('chat-bubble-left', (string) random_int(0, 100))
+            ->addMeta('users', (string) random_int(0, 50))
+            ->setButtons([])
+        ;
 
         $items->push($item);
     }
@@ -125,31 +142,16 @@ The `KanbanItem` DTO provides extensive customization options:
 
 ### Custom Buttons
 
-You can define custom buttons using the `getIndexButtons()` method:
+You can define custom buttons using the `buttons()` method in IndexPage:
 
 ```php
 /**
  * Action buttons for cards in kanban
  */
-public function getIndexButtons(): array
+protected function buttons(): ListOf
 {
     return [
-        ActionButton::make(
-            'View',
-            fn( $item) => $this->getPageUrl(KanbanDetailPage::class, params: ['resourceItem' => $item->id])
-        )->icon('eye'),
-
-        ActionButton::make(
-            'Edit',
-            fn( $item) => $this->getPageUrl(KanbanDetailPage::class, params: ['resourceItem' => $item->id])
-        )->icon('pencil'),
-
-        DeleteButton::for(
-            $this,
-            componentName: $this->getListComponentName(),
-            redirectAfterDelete: $this->getIndexPageUrl(),
-            modalName: "has-one-{$this->getUriKey()}",
-        ),
+        // ActionButton
     ];
 }
 ```
